@@ -1,10 +1,14 @@
-[tool.poetry]
+[project]
 name = "gencli"
 version = "0.0.1"
 description = "General-purpose CLI: a library of functions exposed as commands, built for agents to use and extend"
-authors = ["gustavo.polleti <gustavo.polleti@gmail.com>"]
+authors = [
+    {name = "gustavo.polleti", email = "gustavo.polleti@gmail.com"},
+]
+license = "MIT"
 readme = "README.md"
-packages = [{include = "gencli"}]
+requires-python = ">=3.9,<4.0"
+keywords = ["cli", "typer", "agents", "tooling"]
 classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -13,13 +17,26 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "typer (>=0.17.0,<0.18.0)",
+    "rich (>=14.0.0,<15.0.0)",
+    "shellingham (>=1.5.0,<2.0.0)",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-typer = "^0.17.0"
-rich = "^14.0.0"
-shellingham = "^1.5.0"
+[project.urls]
+Homepage = "https://github.com/gpadpoll/general-cli"
+Repository = "https://github.com/gpadpoll/general-cli"
+Documentation = "https://gpadpoll.github.io/general-cli/"
+
+[project.scripts]
+gencli = "gencli.main:gencli"
+
+[tool.poetry]
+packages = [{include = "gencli"}]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
@@ -41,11 +58,8 @@ pytest = "^8.4.0"
 [tool.poetry.group.publish.dependencies]
 twine = "^6.0.0"
 
-[tool.poetry.scripts]
-gencli = "gencli.main:gencli"
-
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]

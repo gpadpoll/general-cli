@@ -4,6 +4,17 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      target:
+        description: >-
+          Where to publish. Ignored for a Release event, which always
+          publishes to pypi. Use testpypi to dry-run the whole pipeline
+          against TestPyPI before a real release.
+        type: choice
+        options:
+          - testpypi
+          - pypi
+        default: testpypi
 
 permissions:
   contents: read
@@ -41,6 +52,11 @@ jobs:
       - name: Build distributions
         run: poetry build
 
+      - name: Check package metadata (twine)
+        run: |
+          pip install --quiet twine
+          twine check dist/*
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -51,10 +67,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment:
-      name: pypi
-      url: https://pypi.org/project/gencli/
+      name: ${{ (github.event_name == 'release' || github.event.inputs.target == 'pypi') && 'pypi' || 'testpypi' }}
+      url: ${{ (github.event_name == 'release' || github.event.inputs.target == 'pypi') && 'https://pypi.org/project/gencli/' || 'https://test.pypi.org/project/gencli/' }}
     permissions:
-      # Required for PyPI Trusted Publishing (OIDC) - no API token needed.
+      # Required for PyPI/TestPyPI Trusted Publishing (OIDC) - no API token needed.
       id-token: write
 
     steps:
@@ -64,5 +80,12 @@ jobs:
           name: dist
           path: dist/
 
+      - name: Publish to TestPyPI
+        if: github.event_name != 'release' && github.event.inputs.target != 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
       - name: Publish to PyPI
+        if: github.event_name == 'release' || github.event.inputs.target == 'pypi'
         uses: pypa/gh-action-pypi-publish@release/v1
