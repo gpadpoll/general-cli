@@ -1,5 +1,5 @@
 [project]
-name = "gencli"
+name = "gencli-agents"
 version = "0.0.1"
 description = "General-purpose CLI: a library of functions exposed as commands, built for agents to use and extend"
 authors = [

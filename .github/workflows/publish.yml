@@ -70,7 +70,7 @@ jobs:
     needs: build
     environment:
       name: ${{ (github.event_name == 'release' || github.event.inputs.target == 'pypi') && 'pypi' || 'testpypi' }}
-      url: ${{ (github.event_name == 'release' || github.event.inputs.target == 'pypi') && 'https://pypi.org/project/gencli/' || 'https://test.pypi.org/project/gencli/' }}
+      url: ${{ (github.event_name == 'release' || github.event.inputs.target == 'pypi') && 'https://pypi.org/project/gencli-agents/' || 'https://test.pypi.org/project/gencli-agents/' }}
     permissions:
       # Required for PyPI/TestPyPI Trusted Publishing (OIDC) - no API token needed.
       id-token: write

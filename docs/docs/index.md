@@ -12,8 +12,12 @@ changing a tool.
 ## Installation
 
 ```bash
-pip install gencli
+pip install gencli-agents
 ```
+
+The PyPI distribution is named `gencli-agents` (the name `gencli` was
+already taken by an unrelated project), but the import and the CLI command
+are both still `gencli`.
 
 ## Usage
 

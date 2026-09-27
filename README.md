@@ -167,18 +167,26 @@ GitHub Release is published (or the workflow is run manually). It uses
 [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC)
 — there is no API token to generate or store as a secret.
 
+The PyPI distribution name is `gencli-agents` — the plain name `gencli`
+is already taken by an unrelated project (`gen-cli`, which normalizes to
+the same name once PyPI strips hyphens). The import name and CLI command
+are unaffected and remain `gencli`.
+
 **One-time setup** (do this before the first release):
 
-1. On PyPI, go to your project's *Publishing* settings (or "Add a new
-   pending publisher" if the project doesn't exist on PyPI yet) and add a
-   trusted publisher with:
+1. On PyPI, go to "Add a new pending publisher"
+   (https://pypi.org/manage/account/publishing/, and the equivalent on
+   https://test.pypi.org/manage/account/publishing/ if you want to dry-run
+   via TestPyPI first) and add a trusted publisher with:
+   - PyPI Project Name: `gencli-agents`
    - Owner: `gpadpoll`
    - Repository: `general-cli`
    - Workflow file: `publish.yml`
-   - Environment name: `pypi`
-2. In the GitHub repo, create an environment named `pypi` (Settings →
-   Environments) — optional, but lets you add required reviewers before a
-   publish runs.
+   - Environment name: `pypi` (or `testpypi` on test.pypi.org)
+2. The `pypi` and `testpypi` GitHub environments already exist on the repo
+   (Settings → Environments) — created for this workflow; add required
+   reviewers there if you want a manual approval gate before a publish
+   runs.
 
 **To cut a release:**
 
