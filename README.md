@@ -1,0 +1,239 @@
+# gencli
+
+A general-purpose CLI: a library of functions exposed as commands, built for
+agents to use and extend. Every tool is implemented as a small set of pure
+functions with a thin Typer command wrapper, so the same logic works both as
+a shell command and as a plain Python import (from a script, a notebook, or
+another agent's tool).
+
+See [`AGENTS.md`](./AGENTS.md) for the SDLC every new tool must follow
+(pure functions, tests, and a documentation notebook per feature).
+
+## Get Started
+
+See the Docs page: https://gpadpoll.github.io/general-cli/
+
+## Important: Poetry Version
+
+To avoid compatibility errors (such as TypeError related to canonicalize_version), ensure you are using an up-to-date version of Poetry:
+
+   ```bash
+   pip install --upgrade poetry
+   ```
+
+If you encounter installation issues, upgrading Poetry usually resolves them.
+
+## Quick Start
+
+1. **Environment**: create (or verify) the conda environment for this project
+   ```bash
+   make conda-env
+   ```
+
+2. **Installation**: install the package in development mode
+   ```bash
+   make install
+   ```
+
+3. **Basic Usage**: try the built-in commands
+   ```bash
+   gencli config list
+   gencli config set theme dark
+   gencli config get theme
+
+   gencli example slug "Hello, World!"
+   gencli example word-count "to be or not to be"
+   gencli example reverse "the quick brown fox"
+   ```
+
+## CLI Commands
+
+- `gencli config` — manage CLI configuration (`set`, `get`, `list`, `reset`),
+  stored as JSON at `~/.gencli_config.json` (override with
+  `GENCLI_CONFIG_PATH`).
+- `gencli example` — reference tool (`slug`, `word-count`, `reverse`). This
+  is the template to copy when adding a new tool: see
+  `gencli/commands/example.py`, its tests in `tests/test_example.py`, and
+  its notebook in `docs/notebooks/example.ipynb`.
+
+## Adding a new tool
+
+1. Create `gencli/commands/<tool>.py`. Implement the tool's logic as pure
+   functions (no I/O, no side effects, deterministic), and thin Typer
+   commands that call them.
+2. Register the sub-app in `gencli/main.py`.
+3. Write unit tests in `tests/test_<tool>.py`: direct tests for the pure
+   functions, plus a couple of `CliRunner` tests for the CLI wiring.
+4. Document the pure functions as a Jupyter notebook in
+   `docs/notebooks/<tool>.ipynb` (copy `docs/notebooks/example.ipynb` as a
+   starting point) and list it in `docs/docs/index.md`.
+5. Run `make format`, `make check`, `make test`, and the pre-commit hooks
+   before opening a PR.
+
+Full guidelines: [`AGENTS.md`](./AGENTS.md).
+
+## Development
+
+### Prerequisites
+
+This project uses [Poetry](https://python-poetry.org/) for dependency management, inside a dedicated conda environment.
+
+```bash
+make conda-env   # create/verify the conda env and install dependencies
+```
+
+### Setup
+
+1. **Install dependencies**:
+   ```bash
+   make install
+   ```
+   This installs the package and all development dependencies using Poetry.
+
+2. **Install pre-commit hooks**:
+   ```bash
+   make pre-commit
+   ```
+
+### Testing
+
+Run the comprehensive test suite:
+
+```bash
+make test
+```
+
+Or run tests directly with Poetry:
+
+```bash
+poetry run pytest -vvv
+```
+
+### Documentation
+
+1. **Install docs dependencies**:
+   ```bash
+   make docs
+   ```
+
+2. **Serve docs locally**:
+   ```bash
+   make serve-docs
+   ```
+   Or run directly with Poetry:
+   ```bash
+   poetry run mkdocs serve -f docs/mkdocs.yml
+   ```
+
+3. **View documentation**: Open http://localhost:8000
+
+### Code Quality
+
+- **Format code**: `make format` or `poetry run black .`
+- **Check formatting**: `make check` or `poetry run black --check --diff .`
+- **Run linting**: `poetry run flake8`
+- **Type checking**: `poetry run mypy .`
+- **Clean artifacts**: `make clean`
+
+### Docker Testing
+
+Test the CLI in a clean container environment:
+
+1. **Build image**:
+   ```bash
+   make docker-image
+   ```
+
+2. **Run commands**:
+   ```bash
+   docker run --rm gencli --help
+   docker run --rm gencli config list
+   docker run --rm gencli example slug "Hello, World!"
+   ```
+
+## Configuration Storage
+
+- **Default location**: `~/.gencli_config.json`
+- **Custom location**: Set `GENCLI_CONFIG_PATH` environment variable
+- **Format**: JSON with automatic type preservation
+- **Default values**: Includes theme, output_format, auto_save, and debug settings
+
+## Distribution
+
+### PyPI Publishing
+
+> **NOTE**: Ensure you have a [PyPI account](https://pypi.org/account/register/) before publishing.
+
+1. **Create distributions**:
+   ```bash
+   make distributions
+   ```
+   This builds the package using Poetry.
+
+2. **Upload to PyPI**:
+   ```bash
+   poetry publish
+   ```
+   Or use twine:
+   ```bash
+   twine upload dist/*
+   ```
+
+### Project layout
+
+```text
+.
+├── AGENTS.md                # SDLC guidelines for agents adding/changing tools
+├── Dockerfile                # container image build steps
+├── Makefile                  # convenience commands (install, test, docs, conda-env, etc.)
+├── pyproject.toml            # project metadata and dependencies (Poetry)
+├── README.md                 # this file
+├── scripts/
+│   └── setup_conda_env.sh    # creates/verifies the conda environment
+├── docs/                     # MkDocs site and notebook resources
+│   ├── mkdocs.yml
+│   ├── docs/
+│   │   └── index.md
+│   └── notebooks/
+│       └── example.ipynb     # documents the `example` tool's pure functions
+├── gencli/                   # main package code
+│   ├── __init__.py
+│   ├── constants.py
+│   ├── main.py                # top-level Typer app, registers command modules
+│   ├── utils.py                # shared pure helpers
+│   └── commands/               # one module per tool (Typer sub-app)
+│       ├── __init__.py
+│       ├── config.py           # configuration management commands
+│       └── example.py          # reference tool: pure functions + CLI wrapper
+└── tests/
+    ├── test_config.py
+    └── test_example.py
+```
+
+## Architecture
+
+Built with modern Python CLI best practices:
+
+- **[Poetry](https://python-poetry.org/)** - Modern dependency management
+- **[Typer](https://typer.tiangolo.com/)** - Type-based CLI framework
+- **[Rich](https://rich.readthedocs.io/)** - Beautiful terminal output
+- **[Pytest](https://pytest.org/)** - Reliable testing framework
+- **[MkDocs](https://mkdocs.org/)** - Professional documentation
+- **[Black](https://black.readthedocs.io/)** - Code formatting
+- **[Pre-commit](https://pre-commit.com/)** - Git hooks for quality
+
+## Help
+
+View all available make commands:
+
+```bash
+make help
+```
+
+Get CLI help:
+
+```bash
+gencli --help
+gencli config --help
+gencli example --help
+```

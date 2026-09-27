@@ -1,0 +1,73 @@
+[tool.poetry]
+name = "gencli"
+version = "0.0.1"
+description = "General-purpose CLI: a library of functions exposed as commands, built for agents to use and extend"
+authors = ["gustavo.polleti <gustavo.polleti@gmail.com>"]
+readme = "README.md"
+packages = [{include = "gencli"}]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+typer = "^0.17.0"
+rich = "^14.0.0"
+shellingham = "^1.5.0"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "*"
+tox = "*"
+flake8 = "*"
+black = "*"
+mypy = "*"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = "^9.6.0"
+mkdocs-markdownextradata-plugin = "^0.2.6"
+# Needed to convert notebooks to markdown for inclusion in the MkDocs site
+jupyter = "*"
+nbconvert = "*"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.4.0"
+
+[tool.poetry.group.publish.dependencies]
+twine = "^6.0.0"
+
+[tool.poetry.scripts]
+gencli = "gencli.main:gencli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 79
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \venv
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+  | profiling
+)/
+'''
