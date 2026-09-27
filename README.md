@@ -160,7 +160,35 @@ Test the CLI in a clean container environment:
 
 ## Distribution
 
-### PyPI Publishing
+### PyPI Publishing (automated, recommended)
+
+`.github/workflows/publish.yml` builds and publishes to PyPI whenever a
+GitHub Release is published (or the workflow is run manually). It uses
+[PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC)
+— there is no API token to generate or store as a secret.
+
+**One-time setup** (do this before the first release):
+
+1. On PyPI, go to your project's *Publishing* settings (or "Add a new
+   pending publisher" if the project doesn't exist on PyPI yet) and add a
+   trusted publisher with:
+   - Owner: `gpadpoll`
+   - Repository: `general-cli`
+   - Workflow file: `publish.yml`
+   - Environment name: `pypi`
+2. In the GitHub repo, create an environment named `pypi` (Settings →
+   Environments) — optional, but lets you add required reviewers before a
+   publish runs.
+
+**To cut a release:**
+
+1. Bump `version` in `pyproject.toml`.
+2. Commit, then tag: `git tag vX.Y.Z && git push --tags`.
+3. Create a GitHub Release from that tag. This triggers the workflow,
+   which verifies the tag matches the `pyproject.toml` version, builds the
+   sdist/wheel, and publishes them to PyPI.
+
+### PyPI Publishing (manual)
 
 > **NOTE**: Ensure you have a [PyPI account](https://pypi.org/account/register/) before publishing.
 
@@ -188,6 +216,9 @@ Test the CLI in a clean container environment:
 ├── Makefile                  # convenience commands (install, test, docs, conda-env, etc.)
 ├── pyproject.toml            # project metadata and dependencies (Poetry)
 ├── README.md                 # this file
+├── .github/workflows/
+│   ├── docs.yml               # builds+deploys the MkDocs site to GitHub Pages
+│   └── publish.yml            # builds+publishes to PyPI on GitHub Release
 ├── scripts/
 │   └── setup_conda_env.sh    # creates/verifies the conda environment
 ├── docs/                     # MkDocs site and notebook resources
