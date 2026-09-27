@@ -29,6 +29,8 @@ jobs:
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
+        with:
+          version: "2.4.2"
 
       - name: Install dependencies (docs)
         run: |
