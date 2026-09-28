@@ -27,9 +27,13 @@ The CLI provides a set of commands, one Typer sub-app per tool:
 gencli --help
 gencli config --help
 gencli example --help
+gencli kb --help
 ```
 
 `gencli example` is the reference implementation new tools are modeled on.
+`gencli kb` is a client for an external Knowledge Base HTTP API (a fact
+store with evidence and rule-engine audit trails); see its notebook below
+and `gencli/kb_client.py` for the full command surface.
 
 ## Notebooks
 
@@ -44,6 +48,8 @@ make convert-notebooks
 
 - **Example notebook**: `notebooks/example.md` — the `example` tool's
   pure functions (`slugify`, `word_count`, `reverse_words`).
+- **KB client notebook**: `notebooks/kb.md` — `gencli.kb_client`'s pure
+  request/response-shaping functions backing the `kb` command group.
 
 ## Development
 
