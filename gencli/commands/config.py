@@ -1,9 +1,8 @@
 """
 Configuration management command for the CLI.
 
-This module provides commands to manage configuration settings stored
-in a JSON file. The configuration file location can be customized via
-the GENCLI_CONFIG_PATH environment variable.
+This module provides commands to manage configuration settings stored in a JSON file.
+The configuration file location can be customized via the GENCLI_CONFIG_PATH environment variable.
 """
 
 import json
@@ -28,12 +27,6 @@ DEFAULT_CONFIG = {
     "output_format": "table",
     "auto_save": True,
     "debug": False,
-    # gencli kb (Knowledge Base API client) settings — see gencli/kb_client.py
-    "kb_base_url": "http://localhost:8000",
-    "kb_auth_mode": "none",  # "none" | "token" | "service_account"
-    "kb_token": None,
-    "kb_service_account_file": None,
-    "kb_api_audience": None,  # defaults to kb_base_url when unset
 }
 
 
@@ -119,9 +112,8 @@ def set(
     """
     Set a configuration value.
 
-    If the value is not provided as an argument, you will be prompted
-    to enter it interactively. The value will be automatically converted
-    to the appropriate type (bool, int, float, or string).
+    If the value is not provided as an argument, you will be prompted to enter it interactively.
+    The value will be automatically converted to the appropriate type (bool, int, float, or string).
 
     Examples:
         gencli config set theme dark
@@ -158,9 +150,8 @@ def get(
     """
     Retrieve a configuration value.
 
-    Shows the value of the specified configuration key. If the key
-    doesn't exist, an error message is displayed and the command exits
-    with status 1.
+    Shows the value of the specified configuration key. If the key doesn't exist,
+    an error message is displayed and the command exits with status 1.
 
     Examples:
         gencli config get theme
@@ -186,8 +177,7 @@ def list() -> None:
     Shows all current configuration settings in a rich-formatted table,
     making it easy to see all settings at a glance.
 
-    The table includes the configuration key, current value, and the
-    value type.
+    The table includes the configuration key, current value, and the value type.
     """
     config = load_config()
 
@@ -211,20 +201,14 @@ def reset() -> None:
     """
     Reset configuration to default values.
 
-    This command will restore all configuration settings to their
-    default values. A confirmation prompt is shown before proceeding to
-    prevent accidental resets.
+    This command will restore all configuration settings to their default values.
+    A confirmation prompt is shown before proceeding to prevent accidental resets.
 
     Default values:
         - theme: default
         - output_format: table
         - auto_save: true
         - debug: false
-        - kb_base_url: http://localhost:8000
-        - kb_auth_mode: none
-        - kb_token: (unset)
-        - kb_service_account_file: (unset)
-        - kb_api_audience: (unset, defaults to kb_base_url)
     """
     if not typer.confirm(
         "Are you sure you want to reset all configuration to defaults?"

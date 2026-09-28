@@ -1,8 +1,7 @@
 """
 Test suite for the CLI application.
 
-This module contains comprehensive tests for all CLI commands and
-functionality.
+This module contains comprehensive tests for all CLI commands and functionality.
 """
 
 import json

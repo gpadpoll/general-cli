@@ -55,28 +55,6 @@ If you encounter installation issues, upgrading Poetry usually resolves them.
   is the template to copy when adding a new tool: see
   `gencli/commands/example.py`, its tests in `tests/test_example.py`, and
   its notebook in `docs/notebooks/example.ipynb`.
-- `gencli kb` — client for an external Knowledge Base HTTP API (a fact
-  store where every fact records its evidence and the rule-engine
-  decisions that admitted it): `me`, `evidence`, `attributes`, `facts`,
-  `entities`. JSON output by default (this CLI's audience is agents); add
-  `--table` on list/search commands for a human-readable view. Configure
-  with:
-  ```bash
-  gencli config set kb_base_url http://localhost:8000
-  gencli config set kb_auth_mode none            # or "token" / "service_account"
-  gencli config set kb_token <bearer-token>            # for kb_auth_mode=token
-  gencli config set kb_service_account_file <path>     # for kb_auth_mode=service_account
-  ```
-  Example usage:
-  ```bash
-  gencli kb me
-  gencli kb attributes create shoe_size --value-type number
-  gencli kb facts ingest alice shoe_size --value-type number --value 8 \
-      --evidence-url https://example.com --evidence-artifact-path gs://bucket/a.png
-  gencli kb facts for-entity alice --table
-  ```
-  See `gencli/kb_client.py` (the pure/importable "SDK") and
-  `docs/notebooks/kb.ipynb`.
 
 ## Adding a new tool
 
@@ -256,24 +234,19 @@ are unaffected and remain `gencli`.
 │   ├── docs/
 │   │   └── index.md
 │   └── notebooks/
-│       ├── example.ipynb     # documents the `example` tool's pure functions
-│       └── kb.ipynb           # documents kb_client's pure functions
+│       └── example.ipynb     # documents the `example` tool's pure functions
 ├── gencli/                   # main package code
 │   ├── __init__.py
 │   ├── constants.py
 │   ├── main.py                # top-level Typer app, registers command modules
 │   ├── utils.py                # shared pure helpers
-│   ├── kb_client.py            # KB API "SDK": pure functions + thin HTTP/auth I/O
 │   └── commands/               # one module per tool (Typer sub-app)
 │       ├── __init__.py
 │       ├── config.py           # configuration management commands
-│       ├── example.py          # reference tool: pure functions + CLI wrapper
-│       └── kb.py                # thin Typer wrappers around kb_client
+│       └── example.py          # reference tool: pure functions + CLI wrapper
 └── tests/
     ├── test_config.py
-    ├── test_example.py
-    ├── test_kb_client.py
-    └── test_kb.py
+    └── test_example.py
 ```
 
 ## Architecture
@@ -283,9 +256,6 @@ Built with modern Python CLI best practices:
 - **[Poetry](https://python-poetry.org/)** - Modern dependency management
 - **[Typer](https://typer.tiangolo.com/)** - Type-based CLI framework
 - **[Rich](https://rich.readthedocs.io/)** - Beautiful terminal output
-- **[httpx](https://www.python-httpx.org/)** - HTTP client (`gencli kb`)
-- **[google-auth](https://google-auth.readthedocs.io/)** - Google ID token
-  minting for `gencli kb`'s service-account auth mode
 - **[Pytest](https://pytest.org/)** - Reliable testing framework
 - **[MkDocs](https://mkdocs.org/)** - Professional documentation
 - **[Black](https://black.readthedocs.io/)** - Code formatting
@@ -305,5 +275,4 @@ Get CLI help:
 gencli --help
 gencli config --help
 gencli example --help
-gencli kb --help
 ```
