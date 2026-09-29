@@ -10,7 +10,7 @@ logic as pure functions with thin Typer command wrappers (see
 
 import typer
 
-from gencli.commands import config, example, kb
+from gencli.commands import config, crawl, example, kb
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -21,6 +21,9 @@ app.add_typer(config.app, name="config", help="manage configuration settings")
 app.add_typer(example.app, name="example", help="reference text utilities")
 app.add_typer(
     kb.app, name="kb", help="client for the external Knowledge Base API"
+)
+app.add_typer(
+    crawl.app, name="crawl", help="crawl web pages via a local crawl4ai server"
 )
 
 
