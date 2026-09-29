@@ -32,7 +32,18 @@ import json
 import sys
 import uuid
 from enum import Enum
-from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+)
+from urllib.parse import urlparse
 
 import google.auth.exceptions
 import httpx
@@ -214,12 +225,10 @@ def fetch(
 @app.command()
 def deep(
     url: str = typer.Argument(..., help="Root URL to deep-crawl."),
-    max_depth: Optional[int] = typer.Option(
+    max_depth: int = typer.Option(
         2, help="Maximum link depth from the root URL."
     ),
-    max_pages: Optional[int] = typer.Option(
-        20, help="Maximum pages to crawl."
-    ),
+    max_pages: int = typer.Option(20, help="Maximum pages to crawl."),
     stay_on_domain: bool = typer.Option(
         True,
         "--stay-on-domain/--allow-external",
@@ -230,37 +239,65 @@ def deep(
         "text/markdown", help="MIME type recorded on created evidence."
     ),
 ) -> None:
-    """Deep-crawl a domain (BFS) from url, via crawl4ai's /crawl endpoint."""
-    base_url, headers = _crawl_context()
-    strategy = cc.build_bfs_deep_crawl_strategy(
-        max_depth=max_depth,
-        max_pages=max_pages,
-        include_external=not stay_on_domain,
-    )
-    crawler_config = cc.build_crawler_run_config(deep_crawl_strategy=strategy)
-    body = _call_crawl(
-        cc.crawl, base_url, headers, [url], crawler_config=crawler_config
-    )
-    if cc.is_crawl_failure(body):
-        _fail_crawl_semantic_failure(body)
+    """
+    Deep-crawl a domain starting from url: breadth-first, one page at a
+    time over crawl4ai's plain /crawl endpoint, following each page's
+    internal links until max_pages or max_depth is reached.
 
+    (crawl4ai's server-side deep-crawl strategies are rejected as an
+    "untrusted request" by a stock crawl4ai server as of 0.9.4 -- a
+    security restriction on arbitrary strategy objects over its REST API
+    -- so this command does its own client-side traversal instead, using
+    only the plain single/batch crawl shape every crawl4ai server allows.)
+    """
+    base_url, headers = _crawl_context()
+    root_domain = urlparse(url).netloc
+
+    visited: Set[str] = set()
+    frontier = [url]
     output = []
-    for item in body.get("results", []):
-        page_url = item.get("url", url)
-        entry: Dict[str, Any] = {
-            "url": page_url,
-            "success": item.get("success"),
-            "markdown": item.get("markdown"),
-        }
-        if create_evidence and item.get("success"):
-            markdown = item.get("markdown") or ""
-            filename = cc.build_artifact_filename(
-                page_url, uuid.uuid4().hex, ".md"
-            )
-            entry["evidence"] = _maybe_create_evidence(
-                page_url, markdown.encode("utf-8"), filename, media_type
-            )
-        output.append(entry)
+    depth = 0
+
+    while frontier and len(visited) < max_pages and depth <= max_depth:
+        next_frontier: List[str] = []
+        for page_url in frontier:
+            if page_url in visited or len(visited) >= max_pages:
+                continue
+            visited.add(page_url)
+
+            body = _call_crawl(cc.crawl, base_url, headers, [page_url])
+            if cc.is_crawl_failure(body):
+                output.append(
+                    {"url": page_url, "success": False, "markdown": None}
+                )
+                continue
+            result = cc.extract_first_result(body)
+            markdown = cc.extract_page_markdown(result.get("markdown"))
+            entry: Dict[str, Any] = {
+                "url": page_url,
+                "success": result.get("success"),
+                "markdown": markdown,
+            }
+            if create_evidence and result.get("success"):
+                filename = cc.build_artifact_filename(
+                    page_url, uuid.uuid4().hex, ".md"
+                )
+                entry["evidence"] = _maybe_create_evidence(
+                    page_url, markdown.encode("utf-8"), filename, media_type
+                )
+            output.append(entry)
+
+            for href in cc.extract_page_links(
+                result, include_external=not stay_on_domain
+            ):
+                if href in visited:
+                    continue
+                if stay_on_domain and urlparse(href).netloc != root_domain:
+                    continue
+                next_frontier.append(href)
+        frontier = next_frontier
+        depth += 1
+
     _print_json({"url": url, "results": output})
 
 

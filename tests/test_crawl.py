@@ -174,22 +174,48 @@ class TestFetchCommand:
         assert payload == {"error": "bad gateway", "status_code": 502}
 
 
+def _fake_crawl_by_url(monkeypatch, pages):
+    """
+    Patch crawl_client.request so each simulated `deep` page-crawl (one
+    /crawl call per page, batched as urls=[<that page>]) returns the
+    canned result for that page from `pages` (keyed by URL). Returns the
+    list of crawled URLs, in call order.
+    """
+    crawled = []
+
+    def fake(
+        method,
+        path,
+        *,
+        base_url,
+        headers=None,
+        params=None,
+        json_body=None,
+        timeout=30.0,
+    ):
+        assert (method, path) == ("POST", "/crawl")
+        page_url = json_body["urls"][0]
+        crawled.append(page_url)
+        if page_url not in pages:
+            raise AssertionError(f"unexpected page crawled: {page_url}")
+        return {"success": True, "results": [pages[page_url]]}
+
+    monkeypatch.setattr(crawl_client, "request", fake)
+    return crawled
+
+
 class TestDeepCommand:
-    def test_deep_wires_bfs_strategy_and_returns_results(
+    def test_deep_crawls_single_page_with_no_links(
         self, crawl_config_path, monkeypatch
     ):
-        calls = _scripted_crawl_request(
+        crawled = _fake_crawl_by_url(
             monkeypatch,
             {
-                ("POST", "/crawl"): {
+                "https://example.com": {
+                    "url": "https://example.com",
                     "success": True,
-                    "results": [
-                        {
-                            "url": "https://example.com",
-                            "success": True,
-                            "markdown": "# hi",
-                        }
-                    ],
+                    "markdown": "# hi",
+                    "links": {"internal": [], "external": []},
                 }
             },
         )
@@ -201,9 +227,73 @@ class TestDeepCommand:
         assert payload["results"] == [
             {"url": "https://example.com", "success": True, "markdown": "# hi"}
         ]
-        crawler_config = calls[0]["json_body"]["crawler_config"]
-        strategy = crawler_config["params"]["deep_crawl_strategy"]
-        assert strategy["params"]["max_pages"] == 5
+        assert crawled == ["https://example.com"]
+
+    def test_deep_follows_internal_links_breadth_first(
+        self, crawl_config_path, monkeypatch
+    ):
+        crawled = _fake_crawl_by_url(
+            monkeypatch,
+            {
+                "https://example.com": {
+                    "url": "https://example.com",
+                    "success": True,
+                    "markdown": "root",
+                    "links": {
+                        "internal": [{"href": "https://example.com/a"}],
+                        "external": [{"href": "https://other.com/x"}],
+                    },
+                },
+                "https://example.com/a": {
+                    "url": "https://example.com/a",
+                    "success": True,
+                    "markdown": "page a",
+                    "links": {"internal": [], "external": []},
+                },
+            },
+        )
+        result = runner.invoke(
+            app, ["crawl", "deep", "https://example.com", "--max-pages", "5"]
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert [r["url"] for r in payload["results"]] == [
+            "https://example.com",
+            "https://example.com/a",
+        ]
+        # external link never crawled: --stay-on-domain is the default
+        assert "https://other.com/x" not in crawled
+
+    def test_deep_stops_at_max_pages(self, crawl_config_path, monkeypatch):
+        _fake_crawl_by_url(
+            monkeypatch,
+            {
+                "https://example.com": {
+                    "url": "https://example.com",
+                    "success": True,
+                    "markdown": "root",
+                    "links": {
+                        "internal": [
+                            {"href": "https://example.com/a"},
+                            {"href": "https://example.com/b"},
+                        ],
+                        "external": [],
+                    },
+                },
+                "https://example.com/a": {
+                    "url": "https://example.com/a",
+                    "success": True,
+                    "markdown": "a",
+                    "links": {"internal": [], "external": []},
+                },
+            },
+        )
+        result = runner.invoke(
+            app, ["crawl", "deep", "https://example.com", "--max-pages", "2"]
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert len(payload["results"]) == 2
 
     def test_deep_with_create_evidence_uploads_each_successful_page(
         self, crawl_config_path, monkeypatch, tmp_path
@@ -211,23 +301,14 @@ class TestDeepCommand:
         crawl_config_path.write_text(
             json.dumps({"crawl_cache_dir": str(tmp_path)})
         )
-        _scripted_crawl_request(
+        _fake_crawl_by_url(
             monkeypatch,
             {
-                ("POST", "/crawl"): {
+                "https://example.com": {
+                    "url": "https://example.com",
                     "success": True,
-                    "results": [
-                        {
-                            "url": "https://example.com/a",
-                            "success": True,
-                            "markdown": "a",
-                        },
-                        {
-                            "url": "https://example.com/b",
-                            "success": False,
-                            "markdown": None,
-                        },
-                    ],
+                    "markdown": "root",
+                    "links": {"internal": [], "external": []},
                 }
             },
         )
@@ -240,8 +321,31 @@ class TestDeepCommand:
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert payload["results"][0]["evidence"] == {"id": "ev1"}
-        assert "evidence" not in payload["results"][1]
         assert len(kb_calls) == 1
+
+    def test_deep_dict_markdown_is_normalized_to_plain_text(
+        self, crawl_config_path, monkeypatch
+    ):
+        # /crawl can return markdown as a dict (fit_markdown/raw_markdown/...)
+        # rather than a plain string like /md always uses.
+        _fake_crawl_by_url(
+            monkeypatch,
+            {
+                "https://example.com": {
+                    "url": "https://example.com",
+                    "success": True,
+                    "markdown": {
+                        "fit_markdown": "fit text",
+                        "raw_markdown": "raw text",
+                    },
+                    "links": {"internal": [], "external": []},
+                }
+            },
+        )
+        result = runner.invoke(app, ["crawl", "deep", "https://example.com"])
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["results"][0]["markdown"] == "fit text"
 
 
 class TestScreenshotCommand:

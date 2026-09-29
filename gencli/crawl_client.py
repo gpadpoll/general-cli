@@ -175,6 +175,46 @@ def extract_first_result(body: Dict[str, Any]) -> Dict[str, Any]:
     return first
 
 
+def extract_page_markdown(markdown_field: Any) -> str:
+    """
+    Normalize a ``POST /crawl`` result's ``markdown`` field into plain
+    text. Depending on crawl4ai's markdown-generator config, this is
+    either a plain string (the same shape ``POST /md`` always uses) or a
+    ``MarkdownGenerationResult``-like dict with ``fit_markdown``/
+    ``raw_markdown``/... sub-fields — prefer the filtered ``fit_markdown``
+    when both are present.
+    """
+    if isinstance(markdown_field, str):
+        return markdown_field
+    if isinstance(markdown_field, dict):
+        return (
+            markdown_field.get("fit_markdown")
+            or markdown_field.get("raw_markdown")
+            or ""
+        )
+    return ""
+
+
+def extract_page_links(
+    result: Dict[str, Any], *, include_external: bool = False
+) -> List[str]:
+    """
+    Pull hrefs out of a ``POST /crawl`` result's ``links`` field
+    (``{"internal": [{"href": ...}, ...], "external": [...]}``).
+    """
+    links = result.get("links") or {}
+    hrefs = [
+        item["href"] for item in links.get("internal", []) if item.get("href")
+    ]
+    if include_external:
+        hrefs += [
+            item["href"]
+            for item in links.get("external", [])
+            if item.get("href")
+        ]
+    return hrefs
+
+
 def decode_screenshot(body: Dict[str, Any]) -> bytes:
     """Decode a ``POST /screenshot`` response's base64 PNG into raw bytes."""
     return base64.b64decode(body["screenshot"])

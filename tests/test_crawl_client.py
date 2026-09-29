@@ -203,6 +203,57 @@ class TestExtractFirstResult:
             crawl_client.extract_first_result({})
 
 
+class TestExtractPageMarkdown:
+    def test_plain_string_passthrough(self):
+        assert crawl_client.extract_page_markdown("# hi") == "# hi"
+
+    def test_prefers_fit_markdown_from_dict(self):
+        field = {"fit_markdown": "fit", "raw_markdown": "raw"}
+        assert crawl_client.extract_page_markdown(field) == "fit"
+
+    def test_falls_back_to_raw_markdown_when_fit_is_empty(self):
+        field = {"fit_markdown": "", "raw_markdown": "raw"}
+        assert crawl_client.extract_page_markdown(field) == "raw"
+
+    def test_empty_dict_returns_empty_string(self):
+        assert crawl_client.extract_page_markdown({}) == ""
+
+    def test_none_returns_empty_string(self):
+        assert crawl_client.extract_page_markdown(None) == ""
+
+
+class TestExtractPageLinks:
+    def test_internal_only_by_default(self):
+        result = {
+            "links": {
+                "internal": [{"href": "https://x.com/a"}],
+                "external": [{"href": "https://y.com/b"}],
+            }
+        }
+        assert crawl_client.extract_page_links(result) == ["https://x.com/a"]
+
+    def test_includes_external_when_requested(self):
+        result = {
+            "links": {
+                "internal": [{"href": "https://x.com/a"}],
+                "external": [{"href": "https://y.com/b"}],
+            }
+        }
+        assert crawl_client.extract_page_links(
+            result, include_external=True
+        ) == [
+            "https://x.com/a",
+            "https://y.com/b",
+        ]
+
+    def test_missing_links_field_returns_empty_list(self):
+        assert crawl_client.extract_page_links({}) == []
+
+    def test_skips_entries_without_href(self):
+        result = {"links": {"internal": [{"text": "no href"}], "external": []}}
+        assert crawl_client.extract_page_links(result) == []
+
+
 class TestDecodeScreenshot:
     def test_decodes_base64(self):
         import base64
