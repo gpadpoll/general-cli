@@ -34,6 +34,10 @@ DEFAULT_CONFIG = {
     "kb_token": None,
     "kb_service_account_file": None,
     "kb_api_audience": None,  # defaults to kb_base_url when unset
+    # gencli crawl (crawl4ai client) settings — see gencli/crawl_client.py
+    "crawl_base_url": "http://localhost:11235",
+    "crawl_api_token": None,
+    "crawl_cache_dir": "~/.gencli_cache/crawl",
 }
 
 
@@ -225,6 +229,9 @@ def reset() -> None:
         - kb_token: (unset)
         - kb_service_account_file: (unset)
         - kb_api_audience: (unset, defaults to kb_base_url)
+        - crawl_base_url: http://localhost:11235
+        - crawl_api_token: (unset)
+        - crawl_cache_dir: ~/.gencli_cache/crawl
     """
     if not typer.confirm(
         "Are you sure you want to reset all configuration to defaults?"

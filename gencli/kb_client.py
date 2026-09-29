@@ -18,6 +18,7 @@ Two layers, per AGENTS.md's functional-programming rules:
 """
 
 import json as json_module
+import os
 from typing import Any, Dict, List, Optional
 
 import google.auth.transport.requests
@@ -57,6 +58,19 @@ def build_evidence_create_payload(
         "artifact_path": artifact_path,
         "media_type": media_type,
     }
+
+
+def build_evidence_upload_form(
+    url: str, media_type: Optional[str] = None
+) -> Dict[str, str]:
+    """
+    Build the multipart form fields (everything but the file itself) for
+    ``POST /api/evidence/upload``.
+    """
+    form = {"url": url}
+    if media_type is not None:
+        form["media_type"] = media_type
+    return form
 
 
 def build_attribute_create_payload(
@@ -285,11 +299,17 @@ def request(
     headers: Optional[Dict[str, str]] = None,
     params: Optional[Dict[str, Any]] = None,
     json_body: Optional[Dict[str, Any]] = None,
+    data: Optional[Dict[str, Any]] = None,
+    files: Optional[Dict[str, Any]] = None,
     timeout: float = 30.0,
 ) -> Any:
     """
     The single low-level HTTP call every function in this module funnels
     through — the one function CLI-wiring tests monkeypatch.
+
+    ``data``/``files`` are for multipart requests (e.g. evidence upload);
+    don't set a ``Content-Type`` in ``headers`` when passing ``files`` —
+    httpx sets the multipart boundary itself.
 
     Returns the parsed JSON response body (or raw text if the response
     isn't JSON).
@@ -305,6 +325,8 @@ def request(
         headers=headers,
         params=params,
         json=json_body,
+        data=data,
+        files=files,
         timeout=timeout,
     )
     try:
@@ -341,6 +363,34 @@ def create_evidence(
         headers=headers,
         json_body=payload,
     )
+
+
+def upload_evidence(
+    base_url: str,
+    headers: Dict[str, str],
+    url: str,
+    file_path: str,
+    media_type: Optional[str] = None,
+    filename: Optional[str] = None,
+    timeout: float = 60.0,
+) -> Dict[str, Any]:
+    """
+    ``POST /api/evidence/upload`` — uploads ``file_path``'s bytes as the
+    artifact and registers evidence in one call.
+    """
+    form = build_evidence_upload_form(url, media_type)
+    name = filename or os.path.basename(file_path)
+    with open(file_path, "rb") as fh:
+        files = {"file": (name, fh, media_type or "application/octet-stream")}
+        return request(
+            "POST",
+            "/api/evidence/upload",
+            base_url=base_url,
+            headers=headers,
+            data=form,
+            files=files,
+            timeout=timeout,
+        )
 
 
 def list_evidence(

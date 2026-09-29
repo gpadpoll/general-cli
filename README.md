@@ -77,6 +77,29 @@ If you encounter installation issues, upgrading Poetry usually resolves them.
   ```
   See `gencli/kb_client.py` (the pure/importable "SDK") and
   `docs/notebooks/kb.ipynb`.
+- `gencli crawl` — client for a local [crawl4ai](https://github.com/unclecode/crawl4ai)
+  server: `fetch` (one page's clean markdown), `deep` (BFS domain crawl),
+  `screenshot`, `health`. crawl4ai's free/local library has no general web
+  search — only crawling of URLs you already know; the agent brings its
+  own URLs. Every command accepts `--create-evidence` to upload the
+  crawled content as KB evidence and include it in the output in one
+  call — the agent then reads the content, decides what facts are in it,
+  and ingests them with the `gencli kb` commands above; `gencli crawl`
+  itself never does fact extraction. Configure with:
+  ```bash
+  gencli config set crawl_base_url http://localhost:11235
+  gencli config set crawl_api_token <token>   # matches CRAWL4AI_API_TOKEN
+  gencli config set crawl_cache_dir ~/.gencli_cache/crawl
+  ```
+  Example usage:
+  ```bash
+  docker run -d -p 11235:11235 -e CRAWL4AI_API_TOKEN=<token> unclecode/crawl4ai:latest
+  gencli crawl health
+  gencli crawl fetch https://example.com --create-evidence
+  gencli crawl deep https://example.com --max-pages 20 --create-evidence
+  ```
+  See `gencli/crawl_client.py` (the pure/importable "SDK") and
+  `docs/notebooks/crawl.ipynb`.
 
 ## Adding a new tool
 
@@ -257,23 +280,28 @@ are unaffected and remain `gencli`.
 │   │   └── index.md
 │   └── notebooks/
 │       ├── example.ipynb     # documents the `example` tool's pure functions
-│       └── kb.ipynb           # documents kb_client's pure functions
+│       ├── kb.ipynb           # documents kb_client's pure functions
+│       └── crawl.ipynb         # documents crawl_client's pure functions
 ├── gencli/                   # main package code
 │   ├── __init__.py
 │   ├── constants.py
 │   ├── main.py                # top-level Typer app, registers command modules
 │   ├── utils.py                # shared pure helpers
 │   ├── kb_client.py            # KB API "SDK": pure functions + thin HTTP/auth I/O
+│   ├── crawl_client.py         # crawl4ai "SDK": pure functions + thin HTTP I/O
 │   └── commands/               # one module per tool (Typer sub-app)
 │       ├── __init__.py
 │       ├── config.py           # configuration management commands
 │       ├── example.py          # reference tool: pure functions + CLI wrapper
-│       └── kb.py                # thin Typer wrappers around kb_client
+│       ├── kb.py                # thin Typer wrappers around kb_client
+│       └── crawl.py             # thin Typer wrappers around crawl_client
 └── tests/
     ├── test_config.py
     ├── test_example.py
     ├── test_kb_client.py
-    └── test_kb.py
+    ├── test_kb.py
+    ├── test_crawl_client.py
+    └── test_crawl.py
 ```
 
 ## Architecture
@@ -306,4 +334,5 @@ gencli --help
 gencli config --help
 gencli example --help
 gencli kb --help
+gencli crawl --help
 ```

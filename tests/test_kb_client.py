@@ -46,6 +46,18 @@ class TestBuildEvidenceCreatePayload:
         assert payload["media_type"] is None
 
 
+class TestBuildEvidenceUploadForm:
+    def test_with_media_type(self):
+        assert kb_client.build_evidence_upload_form(
+            "https://example.com", "text/markdown"
+        ) == {"url": "https://example.com", "media_type": "text/markdown"}
+
+    def test_without_media_type(self):
+        assert kb_client.build_evidence_upload_form("https://example.com") == {
+            "url": "https://example.com"
+        }
+
+
 class TestBuildAttributeCreatePayload:
     def test_defaults(self):
         payload = kb_client.build_attribute_create_payload("age", "number")
@@ -237,6 +249,8 @@ def _fake_request(monkeypatch, return_value=None, error=None):
         headers=None,
         params=None,
         json_body=None,
+        data=None,
+        files=None,
         timeout=30.0,
     ):
         calls.append(
@@ -247,6 +261,8 @@ def _fake_request(monkeypatch, return_value=None, error=None):
                 "headers": headers,
                 "params": params,
                 "json_body": json_body,
+                "data": data,
+                "files": files,
             }
         )
         if error is not None:
@@ -270,6 +286,8 @@ class TestPerEndpointFunctions:
                 "headers": {"Authorization": "Bearer t"},
                 "params": None,
                 "json_body": None,
+                "data": None,
+                "files": None,
             }
         ]
 
@@ -386,6 +404,96 @@ class TestResolveEvidenceId:
         monkeypatch.setattr(kb_client, "request", fail_if_called)
         with pytest.raises(ValueError):
             kb_client.resolve_evidence_id("http://base", {})
+
+
+class TestUploadEvidence:
+    def test_posts_multipart_with_expected_form_and_file(
+        self, monkeypatch, tmp_path
+    ):
+        # A dedicated fake (not the shared _fake_request) that reads the file
+        # handle immediately, while it's still open inside upload_evidence's
+        # `with open(...)` block -- by the time this call returns, that file
+        # is closed, so the handle can't be read from afterward.
+        calls = []
+
+        def fake(
+            method,
+            path,
+            *,
+            base_url,
+            headers=None,
+            params=None,
+            json_body=None,
+            data=None,
+            files=None,
+            timeout=30.0,
+        ):
+            name, fh, content_type = files["file"]
+            calls.append(
+                {
+                    "method": method,
+                    "path": path,
+                    "data": data,
+                    "filename": name,
+                    "content": fh.read(),
+                    "content_type": content_type,
+                }
+            )
+            return {"id": "e1"}
+
+        monkeypatch.setattr(kb_client, "request", fake)
+        file_path = tmp_path / "a.md"
+        file_path.write_bytes(b"# hello")
+
+        result = kb_client.upload_evidence(
+            "http://base",
+            {},
+            "https://x",
+            str(file_path),
+            media_type="text/markdown",
+        )
+
+        assert result == {"id": "e1"}
+        assert len(calls) == 1
+        assert calls[0]["method"] == "POST"
+        assert calls[0]["path"] == "/api/evidence/upload"
+        assert calls[0]["data"] == {
+            "url": "https://x",
+            "media_type": "text/markdown",
+        }
+        assert calls[0]["filename"] == "a.md"
+        assert calls[0]["content"] == b"# hello"
+        assert calls[0]["content_type"] == "text/markdown"
+
+    def test_defaults_filename_to_basename(self, monkeypatch, tmp_path):
+        calls = _fake_request(monkeypatch, return_value={"id": "e1"})
+        file_path = tmp_path / "nested" / "report.png"
+        file_path.parent.mkdir()
+        file_path.write_bytes(b"\x89PNG")
+
+        kb_client.upload_evidence(
+            "http://base", {}, "https://x", str(file_path)
+        )
+
+        name, fh, content_type = calls[0]["files"]["file"]
+        assert name == "report.png"
+        assert content_type == "application/octet-stream"
+
+    def test_explicit_filename_overrides_basename(self, monkeypatch, tmp_path):
+        calls = _fake_request(monkeypatch, return_value={"id": "e1"})
+        file_path = tmp_path / "a.md"
+        file_path.write_bytes(b"x")
+
+        kb_client.upload_evidence(
+            "http://base",
+            {},
+            "https://x",
+            str(file_path),
+            filename="custom.md",
+        )
+
+        name, _, _ = calls[0]["files"]["file"]
+        assert name == "custom.md"
 
 
 class _FakeCredentials:
@@ -510,3 +618,30 @@ class TestRequestErrorHandling:
         )
         result = kb_client.request("GET", "/api/me", base_url="http://base")
         assert result == {"email": "a@b.com"}
+
+    def test_forwards_data_and_files_to_httpx(self, monkeypatch):
+        class _FakeResponse:
+            status_code = 201
+            is_error = False
+            url = "http://base/api/evidence/upload"
+
+            def json(self):
+                return {"id": "e1"}
+
+        captured = {}
+
+        def fake_httpx_request(method, url, **kwargs):
+            captured.update(kwargs)
+            return _FakeResponse()
+
+        monkeypatch.setattr(kb_client.httpx, "request", fake_httpx_request)
+        result = kb_client.request(
+            "POST",
+            "/api/evidence/upload",
+            base_url="http://base",
+            data={"url": "https://x"},
+            files={"file": ("a.md", b"x", "text/markdown")},
+        )
+        assert result == {"id": "e1"}
+        assert captured["data"] == {"url": "https://x"}
+        assert captured["files"] == {"file": ("a.md", b"x", "text/markdown")}

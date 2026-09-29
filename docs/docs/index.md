@@ -28,12 +28,17 @@ gencli --help
 gencli config --help
 gencli example --help
 gencli kb --help
+gencli crawl --help
 ```
 
 `gencli example` is the reference implementation new tools are modeled on.
 `gencli kb` is a client for an external Knowledge Base HTTP API (a fact
 store with evidence and rule-engine audit trails); see its notebook below
 and `gencli/kb_client.py` for the full command surface.
+`gencli crawl` wraps a local crawl4ai server so an agent can scrape a page
+and turn it into KB evidence in one call (`--create-evidence`), without
+ever talking to crawl4ai or the KB API directly itself; see its notebook
+below and `gencli/crawl_client.py`.
 
 ## Notebooks
 
@@ -50,6 +55,8 @@ make convert-notebooks
   pure functions (`slugify`, `word_count`, `reverse_words`).
 - **KB client notebook**: `notebooks/kb.md` — `gencli.kb_client`'s pure
   request/response-shaping functions backing the `kb` command group.
+- **Crawl client notebook**: `notebooks/crawl.md` — `gencli.crawl_client`'s
+  pure request/response-shaping functions backing the `crawl` command group.
 
 ## Development
 
