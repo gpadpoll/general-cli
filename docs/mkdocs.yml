@@ -34,7 +34,7 @@ markdown_extensions:
 plugins:
     - search
     - markdownextradata: {}
-    
-    
+
+
 extra:
   cli_command: "gencli"

@@ -63,7 +63,7 @@ If you encounter installation issues, upgrading Poetry usually resolves them.
   with:
   ```bash
   gencli config set kb_base_url http://localhost:8000
-  gencli config set kb_auth_mode none            # or "token" / "service_account"
+  gencli config set kb_auth_mode none            # or "token" / "service_account" / "adc"
   gencli config set kb_token <bearer-token>            # for kb_auth_mode=token
   gencli config set kb_service_account_file <path>     # for kb_auth_mode=service_account
   ```
@@ -100,6 +100,25 @@ If you encounter installation issues, upgrading Poetry usually resolves them.
   ```
   See `gencli/crawl_client.py` (the pure/importable "SDK") and
   `docs/notebooks/crawl.ipynb`.
+
+- `gencli agent` — client for an
+  [agent-service](https://github.com/gpadpoll/agent-service) API: LangGraph
+  agents behind a LiteLLM gateway (any LLM), whose tools are this CLI's own
+  `kb` and `crawl` clients. `list`, `invoke`, `stream`, `thread`. Configure
+  with:
+  ```bash
+  gencli config set agent_base_url http://localhost:8080
+  gencli config set agent_api_key <key>
+  ```
+  Example usage:
+  ```bash
+  gencli agent invoke general "What do we know about alice?" --thread t1
+  gencli agent invoke crawl_to_facts "Store the facts from https://example.com" -o
+  gencli agent stream general "Summarize alice" --model smart
+  ```
+  See `gencli/agent_client.py` and `docs/notebooks/agent.ipynb`. For
+  services calling the KB from Cloud Run (no key file), use
+  `kb_auth_mode adc` (ID tokens from Application Default Credentials).
 
 ## Adding a new tool
 

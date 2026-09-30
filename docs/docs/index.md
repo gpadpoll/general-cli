@@ -57,6 +57,8 @@ make convert-notebooks
   request/response-shaping functions backing the `kb` command group.
 - **Crawl client notebook**: `notebooks/crawl.md` — `gencli.crawl_client`'s
   pure request/response-shaping functions backing the `crawl` command group.
+- **Agent client notebook**: `notebooks/agent.md` — `gencli.agent_client`'s
+  pure payload and SSE-parsing functions backing the `agent` command group.
 
 ## Development
 
