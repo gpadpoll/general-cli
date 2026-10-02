@@ -30,7 +30,7 @@ DEFAULT_CONFIG = {
     "debug": False,
     # gencli kb (Knowledge Base API client) settings — see gencli/kb_client.py
     "kb_base_url": "http://localhost:8000",
-    "kb_auth_mode": "none",  # "none" | "token" | "service_account"
+    "kb_auth_mode": "none",  # "none" | "token" | "service_account" | "adc"
     "kb_token": None,
     "kb_service_account_file": None,
     "kb_api_audience": None,  # defaults to kb_base_url when unset
@@ -38,6 +38,9 @@ DEFAULT_CONFIG = {
     "crawl_base_url": "http://localhost:11235",
     "crawl_api_token": None,
     "crawl_cache_dir": "~/.gencli_cache/crawl",
+    # gencli agent (agent-service client) settings — see agent_client.py
+    "agent_base_url": "http://localhost:8080",
+    "agent_api_key": None,
 }
 
 

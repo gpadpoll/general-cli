@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 import google.auth.transport.requests
 import httpx
-from google.oauth2 import service_account
+from google.oauth2 import id_token, service_account
 
 
 class KBAPIError(Exception):
@@ -254,6 +254,19 @@ def mint_service_account_id_token(
     return token
 
 
+def mint_adc_id_token(audience: str) -> str:
+    """
+    Mint a Google-signed ID token for ``audience`` from Application
+    Default Credentials: the metadata server when running on Cloud Run /
+    GCE / GKE (the runtime service account — no key file exists there), or
+    the key file named by ``GOOGLE_APPLICATION_CREDENTIALS`` locally.
+    """
+    token: str = id_token.fetch_id_token(
+        google.auth.transport.requests.Request(), audience
+    )
+    return token
+
+
 def build_headers_for_config(config: Dict[str, Any]) -> Dict[str, str]:
     """
     Build the ``Authorization`` header (or no header at all) for the
@@ -265,6 +278,9 @@ def build_headers_for_config(config: Dict[str, Any]) -> Dict[str, str]:
     - ``"service_account"``: mint a fresh ID token from a service-account
       key file (``kb_service_account_file``), audienced to
       ``kb_api_audience`` or ``kb_base_url``.
+    - ``"adc"``: mint a fresh ID token from Application Default
+      Credentials (the runtime service account on Cloud Run), same
+      audience rule. For services that call the KB without a key file.
 
     Raises:
         ValueError: for an unknown ``kb_auth_mode``, or ``"service_account"``
@@ -288,6 +304,11 @@ def build_headers_for_config(config: Dict[str, Any]) -> Dict[str, str]:
         )
         token = mint_service_account_id_token(service_account_file, audience)
         return build_auth_header(token)
+    if mode == "adc":
+        audience = resolve_api_audience(
+            config.get("kb_base_url") or "", config.get("kb_api_audience")
+        )
+        return build_auth_header(mint_adc_id_token(audience))
     raise ValueError(f"unknown kb_auth_mode {mode!r}")
 
 

@@ -579,6 +579,24 @@ class TestBuildHeadersForConfig:
                 {"kb_auth_mode": "service_account"}
             )
 
+    def test_adc_mode_mints_with_resolved_audience(self, monkeypatch):
+        captured = {}
+
+        def fake_mint(audience):
+            captured["audience"] = audience
+            return "adc-token"
+
+        monkeypatch.setattr(kb_client, "mint_adc_id_token", fake_mint)
+        headers = kb_client.build_headers_for_config(
+            {
+                "kb_auth_mode": "adc",
+                "kb_base_url": "https://api.example.com",
+                "kb_api_audience": "https://aud.example.com",
+            }
+        )
+        assert headers == {"Authorization": "Bearer adc-token"}
+        assert captured == {"audience": "https://aud.example.com"}
+
     def test_unknown_mode_raises(self):
         with pytest.raises(ValueError):
             kb_client.build_headers_for_config(
